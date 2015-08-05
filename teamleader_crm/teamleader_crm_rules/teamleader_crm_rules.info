@@ -1,0 +1,6 @@
+name = Teamleader CRM Rules
+description = Collection of rules actions, which communicates with the Teamleader's CRM API.
+core = 7.x
+package = Teamleader
+dependencies[] = rules
+dependencies[] = teamleader_crm
