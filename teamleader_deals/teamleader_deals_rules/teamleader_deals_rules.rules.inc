@@ -27,21 +27,25 @@ function teamleader_deals_rules_rules_action_info() {
         'type' => 'text',
         'label' => t('Contact: Forename'),
         'optional' => TRUE,
+        'allow null' => TRUE,
       ),
       'contact_surname' => array(
         'type' => 'text',
         'label' => t('Contact: Surname'),
         'optional' => TRUE,
+        'allow null' => TRUE,
       ),
       'contact_email' => array(
         'type' => 'text',
         'label' => t('Contact: Email'),
         'optional' => TRUE,
+        'allow null' => TRUE,
       ),
       'company_name' => array(
         'type' => 'text',
         'label' => t('Company: Name'),
         'optional' => TRUE,
+        'allow null' => TRUE,
       ),
       'deal_title' => array(
         'type' => 'text',
@@ -51,6 +55,7 @@ function teamleader_deals_rules_rules_action_info() {
         'type' => 'text',
         'label' => t('Deal: Description'),
         'optional' => TRUE,
+        'allow null' => TRUE,
       ),
       'deal_source' => array(
         'type' => 'text',
@@ -75,7 +80,9 @@ function teamleader_deals_rules_rules_action_info() {
 }
 
 /**
- * Custom options callback for teamleader_deals_rules_rules_action_add_a_deal().
+ * Custom options callback for teamleader_deals_rules_rules_action_add_a_deal.
+ *
+ * @see teamleader_deals_rules_rules_action_info()
  *
  * @return array
  *   Array of options for Customer type field.
@@ -88,7 +95,9 @@ function teamleader_deals_rules_rules_action_add_a_deal_customer_type_options() 
 }
 
 /**
- * Custom options callback for teamleader_deals_rules_rules_action_add_a_deal().
+ * Custom options callback for teamleader_deals_rules_rules_action_add_a_deal.
+ *
+ * @see teamleader_deals_rules_rules_action_info()
  *
  * @return array
  *   Array of options for Department field.
@@ -104,7 +113,9 @@ function teamleader_deals_rules_rules_action_add_a_deal_department_options() {
 }
 
 /**
- * Custom options callback for teamleader_deals_rules_rules_action_add_a_deal().
+ * Custom options callback for teamleader_deals_rules_rules_action_add_a_deal.
+ *
+ * @see teamleader_deals_rules_rules_action_info()
  *
  * @return array
  *   Array of options for Responsible client field.
@@ -139,7 +150,7 @@ function teamleader_deals_rules_form_rules_ui_edit_element_alter(&$form, &$form_
 function _teamleader_deals_rules_form_rules_ui_add_edit_form_alter(&$form, &$form_state) {
   if (isset($form_state['rules_element'])) {
     $rules_action = $form_state['rules_element'];
-    if ($rules_action->getElementName() == 'teamleader_deals_rules_rules_action_add_a_deal') {
+    if (is_a($rules_action, 'RulesAction') && $rules_action->getElementName() == 'teamleader_deals_rules_rules_action_add_a_deal') {
       // Hide/Display fields according to the value of the
       // deal_contact_or_company parameter.
       foreach (element_children($form['parameter']) as $element) {
@@ -181,7 +192,7 @@ function _teamleader_deals_rules_form_rules_ui_add_edit_form_alter(&$form, &$for
  *       TEAMLEADER_DEALS_CUSTOMER_TYPE_COMPANY.
  *   - contact_forename: text
  *       Forename of the contact.
- *   - ... @see teamleader_deals_rules_rules_action_add_a_deal().
+ *   - ... @see teamleader_deals_rules_rules_action_info().
  *   - settings: array
  *       Rules settings array.
  *   - state: RulesState
