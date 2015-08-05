@@ -10,9 +10,11 @@
 function teamleader_deals_admin_api_settings($form, &$form_state) {
   $teamleader_users = teamleader_users_get_all_users();
   $client_options = array();
-  array_walk($teamleader_users, function ($user) use (&$client_options) {
-    $client_options[$user['id']] = $user['name'];
-  });
+  if (is_array($teamleader_users)) {
+    array_walk($teamleader_users, function ($user) use (&$client_options) {
+      $client_options[$user['id']] = $user['name'];
+    });
+  }
 
   $form[TEAMLEADER_DEALS_DEFAULT_RESPONSIBLE_CLIENT] = array(
     '#type' => 'select',
@@ -25,9 +27,12 @@ function teamleader_deals_admin_api_settings($form, &$form_state) {
 
   $teamleader_departments = teamleader_general_get_all_departments();
   $department_options = array();
-  array_walk($teamleader_departments, function ($department) use (&$department_options) {
-    $department_options[$department['id']] = $department['name'];
-  });
+
+  if (is_array($teamleader_departments)) {
+    array_walk($teamleader_departments, function ($department) use (&$department_options) {
+      $department_options[$department['id']] = $department['name'];
+    });
+  }
 
   $form[TEAMLEADER_DEALS_DEFAULT_DEPARTMENT] = array(
     '#type' => 'select',
