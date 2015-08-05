@@ -1,0 +1,5 @@
+name = Teamleader General
+description = Provides support for Teamleader's General API.
+core = 7.x
+package = Teamleader
+dependencies[] = teamleader

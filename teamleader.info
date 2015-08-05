@@ -1,0 +1,6 @@
+name = Teamleader
+description = Provides connection between the Drupal and the Teamleader API.
+core = 7.x
+package = Teamleader
+
+configure = admin/config/services/teamleader

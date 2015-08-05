@@ -1,0 +1,8 @@
+name = Teamleader Deals
+description = Provides support for Teamleader's Deals API.
+core = 7.x
+package = Teamleader
+dependencies[] = teamleader
+dependencies[] = teamleader_users
+dependencies[] = teamleader_general
+configure = admin/config/services/teamleader/deals

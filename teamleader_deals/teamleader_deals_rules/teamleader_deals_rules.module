@@ -1,0 +1,30 @@
+<?php
+/**
+ * @file
+ * Module file for Teamleader Deals Rules.
+ */
+
+/**
+ * Custom validation handler for rules_ui_edit_element form.
+ *
+ * This validation handler only executed on
+ * teamleader_deals_rules_rules_action_add_a_deal rules action edit
+ * forms.
+ *
+ * @see teamleader_deals_rules_rules_action_info()
+ */
+function teamleader_deals_rules_teamleader_deals_rules_rules_action_add_a_deal_form_validate($form, &$form_state) {
+  switch ($form_state['values']['parameter']['deal_contact_or_company']['settings']['deal_contact_or_company']) {
+    case TEAMLEADER_DEALS_CUSTOMER_TYPE_CONTACT:
+      if (!isset($form_state['values']['parameter']['contact_email']['settings']['contact_email'])) {
+        form_set_error('parameter][contact_email][settings][contact_email', t('Contact email is required!'));
+      }
+      break;
+
+    case TEAMLEADER_DEALS_CUSTOMER_TYPE_COMPANY:
+      if (!isset($form_state['values']['parameter']['company_name']['settings']['company_name'])) {
+        form_set_error('parameter][company_name][settings][company_name', t('Company name is required!'));
+      }
+      break;
+  }
+}

@@ -1,0 +1,179 @@
+<?php
+/**
+ * @file
+ * Module file for Teamleader.
+ */
+
+define('TEAMLEADER_API_BASE_URL', 'https://www.teamleader.be/api/');
+define('TEAMLEADER_API_GROUP', 'teamleader_api_group');
+define('TEAMLEADER_API_SECRET', 'teamleader_api_secret');
+define('TEAMLEADER_API_STATUS_UNKNOWN', -1);
+define('TEAMLEADER_API_STATUS_ERROR', 0);
+define('TEAMLEADER_API_STATUS_OK', 1);
+
+/**
+ * Implements hook_menu().
+ */
+function teamleader_menu() {
+  $items = array();
+
+  $items['admin/config/services/teamleader'] = array(
+    'title' => 'Teamleader API',
+    'description' => 'Teamleader API connection settings.',
+    'access arguments' => array('administer teamleader configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('teamleader_admin_api_settings'),
+    'file' => 'teamleader.admin.inc',
+  );
+  $items['admin/config/services/teamleader/api'] = array(
+    'title' => 'Teamleader API',
+    'description' => 'Teamleader API connection settings.',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -50,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function teamleader_permission() {
+  return array(
+    'administer teamleader configuration' => array(
+      'title' => t('Administer Teamleader'),
+      'description' => t('Allow users to configure Teamleader settings.'),
+      'warning' => t('Give to trusted roles only!'),
+    ),
+  );
+}
+
+/**
+ * Check, if the Teamleader API accessible with the provided credentials.
+ *
+ * @param int $api_group
+ *   Teamleader API group.
+ * @param string $api_secret
+ *   Teamleader API secret.
+ *
+ * @return bool
+ *   TRUE, if the API accessible, else FALSE.
+ */
+function teamleader_test_connection($api_group, $api_secret) {
+  $parameters = array(
+    'api_group' => $api_group,
+    'api_secret' => $api_secret,
+  );
+  $options = array(
+    'method' => 'POST',
+    'data' => drupal_http_build_query($parameters),
+    'headers' => array(
+      'Accept' => 'application/json',
+      'Content-Type' => 'application/x-www-form-urlencoded',
+    ),
+  );
+  $result = drupal_http_request(TEAMLEADER_API_BASE_URL . 'helloWorld.php', $options);
+
+  return $result->code == 200;
+}
+
+/**
+ * Execute a query on the Teamleader and return the result.
+ *
+ * @param string $endpoint
+ *   Teamleader API endpoint url, without the TEAMLEADER_API_BASE_URL and the
+ *   file extension (".php").
+ * @param array $parameters
+ *   POST parameters of the API call.
+ *
+ * @return array
+ *   An associative array, which contains the result.
+ *   - status: Our custom status code for each known status codes.
+ *   - response: If the API response is JSON, then the json decoded response,
+ *     else if the response it is empty, then the response, else an empty
+ *     string.
+ *   - details: The complete object, which returned by the
+ *     drupal_http_request().
+ *
+ * @see drupal_http_request()
+ */
+function teamleader_query_execute($endpoint, array $parameters = array()) {
+  $parameters['api_group'] = variable_get(TEAMLEADER_API_GROUP, '');
+  $parameters['api_secret'] = variable_get(TEAMLEADER_API_SECRET, '');
+
+  $options = array(
+    'method' => 'POST',
+    'data' => drupal_http_build_query($parameters),
+    'headers' => array(
+      'Accept' => 'application/json',
+      'Content-Type' => 'application/x-www-form-urlencoded',
+    ),
+  );
+
+  $result = drupal_http_request(TEAMLEADER_API_BASE_URL . $endpoint . '.php', $options);
+
+  // Parse the response of the API.
+  $response = ' ';
+  if (isset($result->data)) {
+    $json = drupal_json_decode($result->data);
+    if ($json) {
+      if (is_array($json) && isset($json['reason'])) {
+        $response = $json['reason'];
+      }
+      else {
+        $response = $json;
+      }
+    }
+    else {
+      $response = $result->data;
+    }
+  }
+
+  $data['response'] = $response;
+  $data['details'] = $result;
+
+  // Handle known status codes.
+  switch ($result->code) {
+    case 200:
+      $data['status'] = TEAMLEADER_API_STATUS_OK;
+      $data['message'] = t('Teamleader API: Successful API request!');
+      break;
+
+    case 400:
+      $data['status'] = TEAMLEADER_API_STATUS_ERROR;
+      $data['message'] = t('Teamleader API: Bad Request! Reason: @response', array('@response' => $response));
+      watchdog('teamleader', 'Teamleader API: Bad Request! Details: <pre>@details</pre>', array('@details' => print_r($result, TRUE)), WATCHDOG_ERROR);
+      break;
+
+    case 401:
+      $data['status'] = TEAMLEADER_API_STATUS_ERROR;
+      $data['message'] = t('Teamleader API authentication error! Please check your API connection settings!');
+      watchdog('teamleader', 'Teamleader API authentication error! Details: <pre>@details</pre>', array('@details' => print_r($result, TRUE)), WATCHDOG_ERROR);
+      break;
+
+    case 404:
+      $data['status'] = TEAMLEADER_API_STATUS_ERROR;
+      $data['message'] = t('Teamleader API: API endpoint not found! Please try again later!');
+      watchdog('teamleader', 'Teamleader API: API endpoint not found! Details: <pre>@details</pre>', array('@details' => print_r($result, TRUE)), WATCHDOG_ERROR);
+      break;
+
+    case 505:
+      $data['status'] = TEAMLEADER_API_STATUS_ERROR;
+      $data['message'] = t('Teamleader API maximum rate limit exceeded! Please try again later!');
+      watchdog('teamleader', 'Teamleader API maximum rate limit exceeded! Details: <pre>@details</pre>', array('@details' => print_r($result, TRUE)), WATCHDOG_ERROR);
+      break;
+
+    case 0:
+      $data['status'] = TEAMLEADER_API_STATUS_ERROR;
+      $data['message'] = t('Teamleader API host is unreachable!');
+      watchdog('teamleader', 'Teamleader API is unreachable! URL: <pre>@url</pre>', array('@url' => TEAMLEADER_API_BASE_URL . $endpoint . '.php'), WATCHDOG_ERROR);
+      break;
+
+    default:
+      $data['status'] = TEAMLEADER_API_STATUS_UNKNOWN;
+      $data['message'] = t('Teamleader API returned with unknown status code! Please try again later!');
+      watchdog('teamleader', 'Teamleader API returned with unknown status code! Details: <pre>@details</pre>', array('@details' => print_r($result, TRUE)), WATCHDOG_ERROR);
+  }
+
+  return $data;
+}

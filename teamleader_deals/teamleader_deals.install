@@ -1,0 +1,46 @@
+<?php
+/**
+ * @file
+ * Contains install, update and uninstall functions for Teamleader Deals module.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function teamleader_deals_requirements($phase) {
+  $requirements = array();
+  // Ensure translations don't break at install time.
+  $t = get_t();
+
+  module_load_include('module', 'teamleader_deals');
+
+  $reponsible_client = variable_get(TEAMLEADER_DEALS_DEFAULT_RESPONSIBLE_CLIENT, 0);
+  if ($reponsible_client == 0) {
+    $requirements[TEAMLEADER_DEALS_DEFAULT_RESPONSIBLE_CLIENT] = array(
+      'title' => $t('Teamleader Deals: default responsible client'),
+      'description' => $t('Default responsible client should be set on <a href="@url">administration page</a>.', array('@url' => url('admin/config/services/teamleader/deals'))),
+      'value' => $reponsible_client,
+      'severity' => REQUIREMENT_WARNING,
+    );
+  }
+  $department = variable_get(TEAMLEADER_DEALS_DEFAULT_DEPARTMENT, 0);
+  if ($department == 0) {
+    $requirements[TEAMLEADER_DEALS_DEFAULT_DEPARTMENT] = array(
+      'title' => $t('Teamleader Deals: default responsible client'),
+      'description' => $t('Default department should be set on <a href="@url">administration page</a>.', array('@url' => url('admin/config/services/teamleader/deals'))),
+      'value' => $department,
+      'severity' => REQUIREMENT_WARNING,
+    );
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function teamleader_deals_uninstall() {
+  variable_del(TEAMLEADER_DEALS_DEFAULT_RESPONSIBLE_CLIENT);
+  variable_del(TEAMLEADER_DEALS_DEFAULT_DEPARTMENT);
+  variable_del(TEAMLEADER_DEALS_DEFAULT_SOURCE);
+}

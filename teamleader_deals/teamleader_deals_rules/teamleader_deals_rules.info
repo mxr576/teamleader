@@ -1,0 +1,9 @@
+name = Teamleader Deals Rules
+description = Collection of rules actions, which communicates with the Teamleader's Deals API.
+core = 7.x
+package = Teamleader
+dependencies[] = rules
+dependencies[] = teamleader_crm
+dependencies[] = teamleader_deals
+dependencies[] = teamleader_general
+dependencies[] = teamleader_users

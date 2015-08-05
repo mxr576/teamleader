@@ -1,0 +1,5 @@
+name = Teamleader CRM
+description = Provides support for Teamleader's Contact/Company API.
+core = 7.x
+package = Teamleader
+dependencies[] = teamleader

@@ -1,0 +1,77 @@
+<?php
+/**
+ * @file
+ * Module file for Teamleader Users.
+ *
+ * Provides support for Teamleader's Users & Teams API.
+ *
+ * @see http://apidocs.teamleader.be/users.php
+ */
+
+/**
+ * Get all users from Teamleader.
+ *
+ * @param int $show_inactive_users
+ *   Whether return inactive users as well or not. Default is not.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns the array of users,
+ *   else it returns FALSE.
+ */
+function teamleader_users_get_all_users($show_inactive_users = 0) {
+  $result = teamleader_query_execute('getUsers', array('show_inactive_users' => $show_inactive_users));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get all teams from Teamleader.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns the array of teams,
+ *   else it returns FALSE.
+ */
+function teamleader_users_get_all_teams() {
+  $result = teamleader_query_execute('getTeams');
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get the Teamleader modules which this user has access to.
+ *
+ * @param int $user_id
+ *   Teamleader user id of the user.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an associative array
+ *   of available modules with a bool value, which indicates whether the user
+ *   has access to the given module or not; and the agenda access level of the
+ *   user, else it returns FALSE.
+ */
+function teamleader_users_get_user_access_rights($user_id) {
+  $result = teamleader_query_execute('getUserAccess', array('user_id' => $user_id));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}

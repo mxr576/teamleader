@@ -1,0 +1,456 @@
+<?php
+/**
+ * @file
+ * Module file for Teamleader CRM.
+ *
+ * Provides support for Teamleader's Contact/Company API.
+ *
+ * @see http://apidocs.teamleader.be/crm.php
+ */
+
+define('TEAMLEADER_CRM_CONTACT_OPERATION_LINK', 'link');
+define('TEAMLEADER_CRM_CONTACT_OPERATION_UNLINK', 'unlink');
+
+/**
+ * Create a new contact in the Teamleader.
+ *
+ * @param string $forename
+ *   Forename of the person.
+ * @param string $surname
+ *   Surname of the person.
+ * @param string $email
+ *   Email address of the person.
+ * @param array $additional_info
+ *   An associative array of optional information about the person.
+ *   Ex.: telephone, language, location (country, city, street, ...), ... .
+ *
+ * @return int|bool
+ *   If the API operation was successful, then it returns the contact id of
+ *   the new contact, else it returns FALSE.
+ */
+function teamleader_crm_add_contact($forename, $surname, $email, array $additional_info = array()) {
+  $parameters = array(
+    'forename' => $forename,
+    'surname' => $surname,
+    'email' => $email,
+  );
+  if (!empty($additional_info)) {
+    $parameters += $additional_info;
+  }
+
+  $result = teamleader_query_execute('addContact', $parameters);
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Fetch contact information from Teamleader.
+ *
+ * @param int $contact_id
+ *   Teamleader contact id of the person.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an associative array
+ *   of the contact infos, else it returns FALSE.
+ */
+function teamleader_crm_get_contact_info($contact_id) {
+  $result = teamleader_query_execute('getContact', array(
+    'contact_id' => $contact_id,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Update an existing contact in the Teamleader.
+ *
+ * @param int $contact_id
+ *   Teamleader contact id of the person.
+ * @param array $changes
+ *   An associative array of new values of the contact.
+ *   Ex.: forename, surname, email, telephone, ... .
+ * @param bool $track_changes
+ *   Determine whether this change should be visible to the users on the
+ *   web-interface or not.
+ *
+ * @return bool
+ *   If the API operation was successful, then it returns TRUE, else it
+ *   returns FALSE.
+ */
+function teamleader_crm_update_contact($contact_id, array $changes = array(), $track_changes = TRUE) {
+  $parameters = array(
+    'contact_id' => $contact_id,
+    'track_changes' => $track_changes,
+  );
+  if (!empty($changes)) {
+    $parameters += $changes;
+  }
+
+  $result = teamleader_query_execute('updateContact', $parameters);
+
+  return $result['status'] == TEAMLEADER_API_STATUS_OK;
+}
+
+/**
+ * Delete a contact from the Teamleader.
+ *
+ * @param int $contact_id
+ *   Teamleader contact id of the person.
+ *
+ * @return bool
+ *   If the API operation was successful, then it returns TRUE, else it
+ *   returns FALSE.
+ */
+function teamleader_crm_delete_contact($contact_id) {
+  $result = teamleader_query_execute('deleteContact', array('contact_id' => $contact_id));
+  return $result['status'] == TEAMLEADER_API_STATUS_OK;
+}
+
+/**
+ * Link or unlink a contact to a company on the Teamleader.
+ *
+ * @param int $contact_id
+ *   Teamleader contact id of the person.
+ * @param int $company_id
+ *   Teamleader company id of the organization.
+ * @param string $mode
+ *   One from TEAMLEADER_CRM_CONTACT_OPERATION_LINK or
+ *   TEAMLEADER_CRM_CONTACT_OPERATION_UNLINK, if it set to
+ *   TEAMLEADER_CRM_CONTACT_OPERATION_LINK, then the contact will be added to
+ *   the company.
+ *   If it set to TEAMLEADER_CRM_CONTACT_OPERATION_UNLINK, then the relation
+ *   will be removed.
+ * @param string $job_title
+ *   Job title of the contact holds at the company.
+ *
+ * @return bool
+ *   If the API operation was successful, then it returns TRUE, else it
+ *   returns FALSE.
+ */
+function teamleader_crm_link_unlink_contact_to_a_company($contact_id, $company_id, $mode, $job_title = '') {
+  $parameters = array(
+    'contact_id' => $contact_id,
+    'company_id' => $company_id,
+    'mode' => $mode,
+  );
+  if (isset($job_title)) {
+    $parameters['function'] = $job_title;
+  }
+
+  $result = teamleader_query_execute('linkContactToCompany', $parameters);
+
+  return $result['status'] == TEAMLEADER_API_STATUS_OK;
+}
+
+/**
+ * Get all contacts from Teamleader.
+ *
+ * @param int $amount
+ *   Number of contacts to return in this request.
+ *   The default value is the maximum number of contacts per request: 100.
+ * @param int $pageno
+ *   The current page id. Default is the first page.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of contacts, else it returns FALSE.
+ */
+function teamleader_crm_get_contacts($amount = 100, $pageno = 0) {
+  $result = teamleader_query_execute('getContacts', array(
+    'amount' => $amount,
+    'pageno' => $pageno,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Search contacts on Teamleader.
+ *
+ * @param string $search_by
+ *   Query string. Teamleader will try to match each part of the string to the
+ *   forename, surname, company name and email address.
+ * @param int $modified_since
+ *   Unix timestamp. Teamleader will only return contacts that have been added
+ *   or modified since that timestamp.
+ * @param int $amount
+ *   Number of contacts to return in this request.
+ *   The default value is the maximum number of contacts per request: 100.
+ * @param int $pageno
+ *   The current page id. Default is the first page.
+ *
+ * @return array|string|bool
+ *   If the API operation was successful, then it returns an array
+ *   of matching contacts or a "[]" string, if there were not match;
+ *   else it returns FALSE.
+ */
+function teamleader_crm_search_contacts($search_by, $modified_since = NULL, $amount = 100, $pageno = 0) {
+  $parameters = array(
+    'searchby' => $search_by,
+    'amount' => $amount,
+    'pageno' => $pageno,
+  );
+
+  if (isset($modified_since)) {
+    $parameters['modifiedsince'] = $modified_since;
+  }
+
+  $result = teamleader_query_execute('getContacts', $parameters);
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get all contacts from Teamleader, which related to the given company.
+ *
+ * @param int $company_id
+ *   Teamleader company id of the organization.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of related contacts, else it returns FALSE.
+ */
+function teamleader_crm_get_all_company_contacts($company_id) {
+  $result = teamleader_query_execute('getContactsByCompany', array(
+    'company_id' => $company_id,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Create a new company in the Teamleader.
+ *
+ * @param string $name
+ *   Name of the organization.
+ * @param array $additional_info
+ *   An associative array of optional information about the organization.
+ *   Ex.: email, vat_code, location (country, city, street, ...), ... .
+ *
+ * @return int|bool
+ *   If the API operation was successful, then it returns the company id of
+ *   the new company, else it returns FALSE.
+ */
+function teamleader_crm_add_company($name, $additional_info = array()) {
+  $parameters = array(
+    'name' => $name,
+  );
+  if (!empty($additional_info)) {
+    $parameters += $additional_info;
+  }
+
+  $result = teamleader_query_execute('addCompany', $parameters);
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Fetch company information from Teamleader.
+ *
+ * @param int $company_id
+ *   Teamleader company id of the organization.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an associative array
+ *   of the company infos, else it returns FALSE.
+ */
+function teamleader_crm_get_company_info($company_id) {
+  $result = teamleader_query_execute('getCompany', array(
+    'company_id' => $company_id,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Update an existing company in the Teamleader.
+ *
+ * @param int $company_id
+ *   Teamleader company id of the organization.
+ * @param array $changes
+ *   An associative array of new values of the company.
+ *   Ex.: name, vat_code, email, website, ... .
+ * @param bool $track_changes
+ *   Determine whether this change should be visible to the users on the
+ *   web-interface or not.
+ *
+ * @return bool
+ *   If the API operation was successful, then it returns TRUE, else it
+ *   returns FALSE.
+ */
+function teamleader_crm_update_company($company_id, array $changes = array(), $track_changes = TRUE) {
+  $parameters = array(
+    'company_id' => $company_id,
+    'track_changes' => $track_changes,
+  );
+  if (!empty($changes)) {
+    $parameters += $changes;
+  }
+
+  $result = teamleader_query_execute('updateCompany', $parameters);
+
+  return $result['status'] == TEAMLEADER_API_STATUS_OK;
+}
+
+/**
+ * Delete a company from the Teamleader.
+ *
+ * @param int $company_id
+ *   Teamleader company id of the organization.
+ *
+ * @return bool
+ *   If the API operation was successful, then it returns TRUE, else it
+ *   returns FALSE.
+ */
+function teamleader_crm_delete_company($company_id) {
+  $result = teamleader_query_execute('deleteCompany', array('company_id' => $company_id));
+  return $result['status'] == TEAMLEADER_API_STATUS_OK;
+}
+
+/**
+ * Get all companies from Teamleader.
+ *
+ * @param int $amount
+ *   Number of companies to return in this request.
+ *   The default value is the maximum number of companies per request: 100.
+ * @param int $pageno
+ *   The current page id. Default is the first page.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of companies, else it returns FALSE.
+ */
+function teamleader_crm_get_companies($amount = 100, $pageno = 0) {
+  $result = teamleader_query_execute('getCompanies', array(
+    'amount' => $amount,
+    'pageno' => $pageno,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Search companies on Teamleader.
+ *
+ * @param string $search_by
+ *   Query string. Teamleader will try to match each part of the string to the
+ *   company name and email address.
+ * @param int $modified_since
+ *   Unix timestamp. Teamleader will only return companies that have been added
+ *   or modified since that timestamp.
+ * @param int $amount
+ *   Number of companies to return in this request.
+ *   The default value is the maximum number of companies per request: 100.
+ * @param int $pageno
+ *   The current page id. Default is the first page.
+ *
+ * @return array|string|bool
+ *   If the API operation was successful, then it returns an array
+ *   of matching companies or a "[]" string, if there were not match;
+ *   else it returns FALSE.
+ */
+function teamleader_crm_search_companies($search_by, $modified_since = NULL, $amount = 100, $pageno = 0) {
+  $parameters = array(
+    'searchby' => $search_by,
+    'amount' => $amount,
+    'pageno' => $pageno,
+  );
+
+  if (isset($modified_since)) {
+    $parameters['modifiedsince'] = $modified_since;
+  }
+
+  $result = teamleader_query_execute('getCompanies', $parameters);
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Getting all possible business types in a country.
+ *
+ * @param string $country_code
+ *   Country code according to ISO 3166-1 alpha-2. For Belgium: "BE".
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array of
+ *   associative arrays. Each of them contains a name of business type
+ *   (legal structure), that a company can have within a certain country.
+ *   Else it returns FALSE.
+ */
+function teamleader_crm_get_business_types_in_this_country($country_code) {
+  $result = teamleader_query_execute('getBusinessTypes', array(
+    'country' => $country_code,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}

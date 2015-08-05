@@ -1,0 +1,449 @@
+<?php
+/**
+ * @file
+ * Module file for Teamleader Deals.
+ *
+ * Provides support for Teamleader's Deals API.
+ *
+ * @see http://apidocs.teamleader.be/opportunities.php
+ */
+
+define('TEAMLEADER_DEALS_DEFAULT_RESPONSIBLE_CLIENT', 'teamleader_deals_default_responsible_client');
+define('TEAMLEADER_DEALS_DEFAULT_DEPARTMENT', 'teamleader_deals_default_department');
+define('TEAMLEADER_DEALS_DEFAULT_SOURCE', 'teamleader_deals_default__source');
+define('TEAMLEADER_DEALS_CUSTOMER_TYPE_CONTACT', 'contact');
+define('TEAMLEADER_DEALS_CUSTOMER_TYPE_COMPANY', 'company');
+
+/**
+ * Implements hook_menu().
+ */
+function teamleader_deals_menu() {
+  $items = array();
+
+  $items['admin/config/services/teamleader/deals'] = array(
+    'title' => 'Deals',
+    'description' => 'Teamleader Deals configuration.',
+    'access callback' => 'teamleader_deals_admin_api_settings_page_access_callback',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('teamleader_deals_admin_api_settings'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'teamleader_deals.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Custom access callback form Teamleader Deals administration page.
+ *
+ * @param \stdClass $account
+ *   User object.
+ *
+ * @return bool
+ *   TRUE, if the given user has access, else FALSE.
+ */
+function teamleader_deals_admin_api_settings_page_access_callback(stdClass $account = NULL) {
+  if ($account) {
+    global $user;
+    $account = $user;
+  }
+
+  return user_access('administer teamleader configuration', $account) || user_access('administer teamleader deals configuration', $account);
+}
+
+/**
+ * Implements hook_permission().
+ */
+function teamleader_deals_permission() {
+  return array(
+    'administer teamleader deals configuration' => array(
+      'title' => t('Administer Teamleader Deals'),
+      'description' => t('Allow users to configure Teamleader Deals settings.'),
+      'warning' => t('Give to trusted roles only!'),
+    ),
+  );
+}
+
+/**
+ * Create a new contact in the Teamleader.
+ *
+ * @param string $customer_type
+ *   One from TEAMLEADER_DEALS_CUSTOMER_TYPE_CONTACT and
+ *   TEAMLEADER_DEALS_CUSTOMER_TYPE_COMPANY.
+ * @param int $customer_id
+ *   The Teamleader id of the contact or the company.
+ * @param string $title
+ *   Title of the deal.
+ * @param array $products
+ *   Items on the quotation. Each element should contains the following key -
+ *   value pairs:
+ *   array(
+ *     'description' = 'string',
+ *     'price' = 1,
+ *     'amount' = 1,
+ *     'vat' = 'CM',
+ *   );
+ *   . Valid VAT values: 00/ 06 / 12 / 21 / CM / EX / MC / VCMD.
+ * @param array $custom_fields
+ *   Values of the custom fields on deal. The array contains the following
+ *   key - value pairs:
+ *   array(
+ *     'ID1' = 'foo',
+ *     'ID2' = 'bar',
+ *   );
+ *   Replace ID{1,2, ...} by the Teamleader id of your custom fields ids.
+ * @param int $department_id
+ *   Teamleader id of the department, where the deal will be added to.
+ * @param int $responsible_id
+ *   Teamleader id of the user, who will be responsible for this deal.
+ * @param string $source
+ *   Source of this deal, by default is "Drupal".
+ * @param string $description
+ *   Description text of the deal.
+ *
+ * @return int|bool
+ *   If the API operation was successful, then it returns the id of
+ *   the new deal, else it returns FALSE.
+ */
+function teamleader_deals_add_deal($customer_type, $customer_id, $title, array $products = array(), array $custom_fields = array(), $department_id = NULL, $responsible_id = NULL, $source = '', $description = '') {
+  $parameters = array(
+    'contact_or_company' => $customer_type,
+    'contact_or_company_id' => $customer_id,
+    'title' => $title,
+    'sys_department_id' => $department_id ? $department_id : variable_get(TEAMLEADER_DEALS_DEFAULT_DEPARTMENT, 0),
+    'responsible_sys_client_id' => $responsible_id ? $responsible_id : variable_get(TEAMLEADER_DEALS_DEFAULT_RESPONSIBLE_CLIENT, 0),
+    'source' => $source ? $source : variable_get(TEAMLEADER_DEALS_DEFAULT_SOURCE, 'Drupal'),
+  );
+
+  if ($description) {
+    $parameters['description'] = $description;
+  }
+
+  array_walk($products, function ($product, $key) use (&$parameters) {
+    $array_keys = array_keys($product);
+    array_walk($array_keys, function ($ak) use (&$parameters, $key, $product) {
+      $parameters[$ak . '_' . ($key + 1)] = $product[$ak];
+    });
+  });
+
+  array_walk($custom_fields, function ($value, $key) use (&$parameters) {
+    $parameters['custom_field_' . $key] = $value;
+  });
+
+  $result = teamleader_query_execute('addSale', $parameters);
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Update an existing deal in the Teamleader.
+ *
+ * @param int $deal_id
+ *   Teamleader contact id of the person.
+ * @param string $source
+ *   Source of this deal.
+ * @param int $responsible_id
+ *   Teamleader id of the user, who will be responsible for this deal.
+ * @param int $phase_id
+ *   Teamleader ID of the phase, that this deal should be moved to.
+ * @param array $custom_fields
+ *   Values of the custom fields on deal. The array contains the following
+ *   key - value pairs:
+ *   array(
+ *     'ID1' = 'foo',
+ *     'ID2' = 'bar',
+ *   );
+ *   Replace ID{1,2, ...} by the Teamleader id of your custom fields ids.
+ *
+ * @return bool
+ *   If the API operation was successful, then it returns TRUE, else it
+ *   returns FALSE.
+ */
+function teamleader_deals_update_deal($deal_id, $source = '', $responsible_id = NULL, $phase_id = NULL, array $custom_fields = array()) {
+  $parameters = array(
+    'deal_id' => $deal_id,
+  );
+
+  if ($source) {
+    $parameters['source'] = $source;
+  }
+  if ($responsible_id) {
+    $parameters['responsible_sys_client_id'] = $responsible_id;
+  }
+  if ($phase_id) {
+    $parameters['phase_id'] = $phase_id;
+  }
+
+  array_walk($custom_fields, function ($value, $key) use (&$parameters) {
+    $parameters['custom_field_' . $key] = $value;
+  });
+
+  $result = teamleader_query_execute('updateDeal', $parameters);
+
+  return $result['status'] == TEAMLEADER_API_STATUS_OK;
+}
+
+/**
+ * Get all deals from Teamleader.
+ *
+ * @param int $amount
+ *   Number of deals to return in this request.
+ *   The default value is the maximum number of deals per request: 100.
+ * @param int $pageno
+ *   The current page id. Default is the first page.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of deals, else it returns FALSE.
+ */
+function teamleader_deals_get_deals($amount = 100, $pageno = 0) {
+  $result = teamleader_query_execute('getDeals', array(
+    'amount' => $amount,
+    'pageno' => $pageno,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Search deals on Teamleader.
+ *
+ * @param string $search_by
+ *   Query string. Teamleader will try to search deals matching this string.
+ * @param int $amount
+ *   Number of deals to return in this request.
+ *   The default value is the maximum number of deals per request: 100.
+ * @param int $pageno
+ *   The current page id. Default is the first page.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of matching deals, else it returns FALSE.
+ */
+function teamleader_deals_search_deals($search_by, $amount = 100, $pageno = 0) {
+  $parameters = array(
+    'searchby' => $search_by,
+    'amount' => $amount,
+    'pageno' => $pageno,
+  );
+
+  $result = teamleader_query_execute('getDeals', $parameters);
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get all deals from Teamleader, which related to the given company.
+ *
+ * @param int $company_id
+ *   Teamleader company id of the organization.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of related deals, else it returns FALSE.
+ */
+function teamleader_deals_get_all_deals_of_company($company_id) {
+  $result = teamleader_query_execute('getDealsByContactOrCompany', array(
+    'contact_or_company_id' => $company_id,
+    'contact_or_company' => TEAMLEADER_DEALS_CUSTOMER_TYPE_COMPANY,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get all deals from Teamleader, which related to the given contact.
+ *
+ * @param int $contact_id
+ *   Teamleader contact id of the person.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of related deals, else it returns FALSE.
+ */
+function teamleader_deals_get_all_deals_of_contact($contact_id) {
+  $result = teamleader_query_execute('getDealsByContactOrCompany', array(
+    'contact_or_company_id' => $contact_id,
+    'contact_or_company' => TEAMLEADER_DEALS_CUSTOMER_TYPE_CONTACT,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get all deals from Teamleader, which related to the given project.
+ *
+ * @param int $project_id
+ *   Teamleader project id of the project.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of related deals, else it returns FALSE.
+ */
+function teamleader_deals_get_all_deals_of_project($project_id) {
+  $result = teamleader_query_execute('getDealsByProject', array(
+    'project_id' => $project_id,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Fetch deal information from Teamleader.
+ *
+ * @param int $deal_id
+ *   Teamleader deal id of the deal.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an associative array
+ *   of the deal infos, else it returns FALSE.
+ */
+function teamleader_deals_get_deal_info($deal_id) {
+  $result = teamleader_query_execute('getDeal', array(
+    'deal_id' => $deal_id,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Fetch all deal phase changes of the given deal from Teamleader.
+ *
+ * @param int $deal_id
+ *   Teamleader deal id of the deal.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an associative array
+ *   of the deal phases, else it returns FALSE.
+ */
+function teamleader_deals_get_phase_changes_of_deal($deal_id) {
+  $result = teamleader_query_execute('getDealPhaseChanges', array(
+    'deal_id' => $deal_id,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get all deal phase changes of all deals in the given interval.
+ *
+ * @param string $from
+ *   Date (dd/mm/yyyy), the start date of the period.
+ * @param string $to
+ *   Date (dd/mm/yyyy), the start date of the period.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an associative array
+ *   of the deal phases, else it returns FALSE.
+ */
+function teamleader_deals_get_phase_changes_in_this_interval($from, $to) {
+  $result = teamleader_query_execute('getAllDealPhaseChanges', array(
+    'date_from' => $from,
+    'to' => $to,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Fetch all deal phases from Teamleader.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of the deal phases, else it returns FALSE.
+ */
+function teamleader_deals_get_deal_phases() {
+  $result = teamleader_query_execute('getDealPhases');
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Fetch all deal sources from Teamleader.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of the deal sources, else it returns FALSE.
+ */
+function teamleader_deals_get_deal_sources() {
+  $result = teamleader_query_execute('getDealSources');
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}

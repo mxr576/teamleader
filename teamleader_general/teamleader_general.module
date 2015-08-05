@@ -1,0 +1,82 @@
+<?php
+/**
+ * @file
+ * Module file for Teamleader General.
+ *
+ * Provides support for Teamleader's General API.
+ *
+ * @see http://apidocs.teamleader.be/general.php
+ */
+
+define('TEAMLEADER_GENERAL_TAG_TYPE_CONTACT', 'crm_contacts');
+define('TEAMLEADER_GENERAL_TAG_TYPE_COMPANY', 'crm_companies');
+define('TEAMLEADER_GENERAL_SEGMENT_TYPE_CONTACT', 'crm_contacts');
+define('TEAMLEADER_GENERAL_SEGMENT_TYPE_COMPANY', 'crm_companies');
+
+/**
+ * Get all departments from Teamleader.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns the array of
+ *   departments, else it returns FALSE.
+ */
+function teamleader_general_get_all_departments() {
+  $result = teamleader_query_execute('getDepartments');
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get all tags from Teamleader.
+ *
+ * @param string $type
+ *   Could be one from TEAMLEADER_GENERAL_TAG_TYPE_CONTACT and
+ *   TEAMLEADER_GENERAL_TAG_TYPE_COMPANY.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns the array of
+ *   departments, else it returns FALSE.
+ */
+function teamleader_general_get_all_tags($type = '') {
+  $result = teamleader_query_execute('getTags', array('string' => $type));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
+
+/**
+ * Get all segments from Teamleader.
+ *
+ * @param string $type
+ *   Could be one from TEAMLEADER_GENERAL_SEGMENT_TYPE_CONTACT and
+ *   TEAMLEADER_GENERAL_SEGMENT_TYPE_COMPANY.
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns the array of
+ *   departments, else it returns FALSE.
+ */
+function teamleader_general_get_segments($type = '') {
+  $result = teamleader_query_execute('getSegments', array('object_type' => $type));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message']);
+  }
+
+  return FALSE;
+}
