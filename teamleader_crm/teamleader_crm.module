@@ -44,7 +44,7 @@ function teamleader_crm_add_contact($forename, $surname, $email, array $addition
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -69,7 +69,7 @@ function teamleader_crm_get_contact_info($contact_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -179,7 +179,7 @@ function teamleader_crm_get_contacts($amount = 100, $pageno = 0) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -222,7 +222,7 @@ function teamleader_crm_search_contacts($search_by, $modified_since = NULL, $amo
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -247,7 +247,7 @@ function teamleader_crm_get_all_company_contacts($company_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -280,7 +280,7 @@ function teamleader_crm_add_company($name, $additional_info = array()) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -305,7 +305,7 @@ function teamleader_crm_get_company_info($company_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -379,7 +379,7 @@ function teamleader_crm_get_companies($amount = 100, $pageno = 0) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -422,7 +422,7 @@ function teamleader_crm_search_companies($search_by, $modified_since = NULL, $am
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -449,7 +449,7 @@ function teamleader_crm_get_business_types_in_this_country($country_code) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
