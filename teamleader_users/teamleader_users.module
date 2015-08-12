@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Module file for Teamleader Users.
+ * Module file for Teamleader Users & Teams.
  *
  * Provides support for Teamleader's Users & Teams API.
  *
@@ -25,7 +25,7 @@ function teamleader_users_get_all_users($show_inactive_users = 0) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -45,7 +45,7 @@ function teamleader_users_get_all_teams() {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -70,7 +70,7 @@ function teamleader_users_get_user_access_rights($user_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
