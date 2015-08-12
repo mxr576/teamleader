@@ -65,7 +65,7 @@ function teamleader_deals_permission() {
 }
 
 /**
- * Create a new contact in the Teamleader.
+ * Create a new deal in the Teamleader.
  *
  * @param string $customer_type
  *   One from TEAMLEADER_DEALS_CUSTOMER_TYPE_CONTACT and
@@ -74,6 +74,22 @@ function teamleader_deals_permission() {
  *   The Teamleader id of the contact or the company.
  * @param string $title
  *   Title of the deal.
+ * @param int $department_id
+ *   Teamleader id of the department, where the deal will be added to.
+ * @param int $responsible_id
+ *   Teamleader id of the user, who will be responsible for this deal.
+ * @param string $source
+ *   Source of this deal, by default is "Drupal".
+ * @param array $additional_info
+ *   An associative array of optional parameters:
+ *   -  description: string. Description text of the deal.
+ *   -  description_location: string. Possible values: note or deal.
+ *      This is a custom field, not an existing API parameter! When the
+ *      teamleader_deals_rules and the teamleader_notes_rules modules are
+ *      enabled, then the users could create a "Add a new note" rules action,
+ *      which will be triggered by the "New deal added" event and this way
+ *      they could save the description text of the deal to a new,
+ *      attached note, instead of the deal's own description field.
  * @param array $products
  *   Items on the quotation. Each element should contains the following key -
  *   value pairs:
@@ -92,20 +108,12 @@ function teamleader_deals_permission() {
  *     'ID2' = 'bar',
  *   );
  *   Replace ID{1,2, ...} by the Teamleader id of your custom fields ids.
- * @param int $department_id
- *   Teamleader id of the department, where the deal will be added to.
- * @param int $responsible_id
- *   Teamleader id of the user, who will be responsible for this deal.
- * @param string $source
- *   Source of this deal, by default is "Drupal".
- * @param string $description
- *   Description text of the deal.
  *
  * @return int|bool
  *   If the API operation was successful, then it returns the id of
  *   the new deal, else it returns FALSE.
  */
-function teamleader_deals_add_deal($customer_type, $customer_id, $title, array $products = array(), array $custom_fields = array(), $department_id = NULL, $responsible_id = NULL, $source = '', $description = '') {
+function teamleader_deals_add_deal($customer_type, $customer_id, $title, $department_id = NULL, $responsible_id = NULL, $source = '', array $additional_info = array(), array $products = array(), array $custom_fields = array()) {
   $parameters = array(
     'contact_or_company' => $customer_type,
     'contact_or_company_id' => $customer_id,
@@ -115,8 +123,22 @@ function teamleader_deals_add_deal($customer_type, $customer_id, $title, array $
     'source' => $source ? $source : variable_get(TEAMLEADER_DEALS_DEFAULT_SOURCE, 'Drupal'),
   );
 
-  if ($description) {
-    $parameters['description'] = $description;
+  if (!empty($additional_info)) {
+    $parameters += $additional_info;
+    // Store the description text in a new, attached note, instead of the
+    // deal's own description field.
+    // TODO It would be better to check, if any
+    // teamleader_notes_rules_rules_action_add_note action exists,
+    // which triggered by the teamleader_deals_rules_rules_event_new_deal_added
+    // event.
+    if (module_exists('teamleader_deals_rules') && module_exists('teamleader_notes_rules')) {
+      if (!empty($additional_info['description']) && isset($additional_info['description_location']) && $additional_info['description_location'] == 'note') {
+        unset($parameters['description']);
+      }
+    }
+    if (isset($parameters['description_location'])) {
+      unset($parameters['description_location']);
+    }
   }
 
   array_walk($products, function ($product, $key) use (&$parameters) {
@@ -133,10 +155,18 @@ function teamleader_deals_add_deal($customer_type, $customer_id, $title, array $
   $result = teamleader_query_execute('addSale', $parameters);
 
   if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    // TODO It would be better to check, if any action exists, which triggered
+    // by the teamleader_deals_rules_rules_event_new_deal_added event.
+    if (module_exists('teamleader_deals_rules')) {
+      if (!empty($additional_info['description'])) {
+        rules_invoke_event('teamleader_deals_rules_rules_event_new_deal_added', $result['response'], $additional_info['description']);
+      }
+    }
+
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -213,7 +243,7 @@ function teamleader_deals_get_deals($amount = 100, $pageno = 0) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -247,7 +277,7 @@ function teamleader_deals_search_deals($search_by, $amount = 100, $pageno = 0) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -273,7 +303,7 @@ function teamleader_deals_get_all_deals_of_company($company_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -299,7 +329,7 @@ function teamleader_deals_get_all_deals_of_contact($contact_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -324,7 +354,7 @@ function teamleader_deals_get_all_deals_of_project($project_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -349,7 +379,7 @@ function teamleader_deals_get_deal_info($deal_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -374,7 +404,7 @@ function teamleader_deals_get_phase_changes_of_deal($deal_id) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -402,7 +432,7 @@ function teamleader_deals_get_phase_changes_in_this_interval($from, $to) {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -422,7 +452,7 @@ function teamleader_deals_get_deal_phases() {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -442,7 +472,7 @@ function teamleader_deals_get_deal_sources() {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;

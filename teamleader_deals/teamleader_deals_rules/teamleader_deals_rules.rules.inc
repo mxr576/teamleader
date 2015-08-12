@@ -57,6 +57,17 @@ function teamleader_deals_rules_rules_action_info() {
         'optional' => TRUE,
         'allow null' => TRUE,
       ),
+      'deal_description_location' => array(
+        'type' => 'text',
+        'label' => t('Deal: Save description to'),
+        'optional' => TRUE,
+        'options list' => 'teamleader_deals_rules_rules_action_add_a_deal_deal_description_location_options',
+        'default value' => 'deal',
+        'description' => t("If you create a %action rules action, which will be triggered by the %event event, then you save the description field value to a new, attached note, instead of the deal's own description field. <p><strong>Warning: </strong> if you chose the 'New note' option, and you do/will not have this particular action implemented, then you'll lost the value of the description field.</p>", array(
+          '%action' => t('Teamleader Notes Rules: Add a note'),
+          '%event' => t('Teamleader Deals Rule: New deal added'),
+        )),
+      ),
       'deal_source' => array(
         'type' => 'text',
         'label' => t('Deal: Source'),
@@ -85,7 +96,7 @@ function teamleader_deals_rules_rules_action_info() {
  * @see teamleader_deals_rules_rules_action_info()
  *
  * @return array
- *   Array of options for Customer type field.
+ *   Array of options for "Deal: Customer type" field.
  */
 function teamleader_deals_rules_rules_action_add_a_deal_customer_type_options() {
   return array(
@@ -100,7 +111,7 @@ function teamleader_deals_rules_rules_action_add_a_deal_customer_type_options() 
  * @see teamleader_deals_rules_rules_action_info()
  *
  * @return array
- *   Array of options for Department field.
+ *   Array of options for "Deal: Department" field.
  */
 function teamleader_deals_rules_rules_action_add_a_deal_department_options() {
   $teamleader_departments = teamleader_general_get_all_departments();
@@ -118,7 +129,7 @@ function teamleader_deals_rules_rules_action_add_a_deal_department_options() {
  * @see teamleader_deals_rules_rules_action_info()
  *
  * @return array
- *   Array of options for Responsible client field.
+ *   Array of options for "Deal: Responsible client" field.
  */
 function teamleader_deals_rules_rules_action_add_a_deal_responsible_options() {
   $teamleader_users = teamleader_users_get_all_users();
@@ -128,6 +139,21 @@ function teamleader_deals_rules_rules_action_add_a_deal_responsible_options() {
   });
 
   return $client_options;
+}
+
+/**
+ * Custom options callback for teamleader_deals_rules_rules_action_add_a_deal.
+ *
+ * @see teamleader_deals_rules_rules_action_info()
+ *
+ * @return array
+ *   Array of options for "Deal: Save description to" field.
+ */
+function teamleader_deals_rules_rules_action_add_a_deal_deal_description_location_options() {
+  return array(
+    'deal' => t("Deal's description"),
+    'note' => t('New note'),
+  );
 }
 
 /**
@@ -178,6 +204,7 @@ function _teamleader_deals_rules_form_rules_ui_add_edit_form_alter(&$form, &$for
           );
         }
       }
+      $form['parameter']['deal_description_location']['#access'] = module_exists('teamleader_notes_rules');
       $form['#validate'][] = 'teamleader_deals_rules_teamleader_deals_rules_rules_action_add_a_deal_form_validate';
     }
   }
@@ -307,7 +334,38 @@ function teamleader_deals_rules_rules_action_add_a_deal(array $parameters) {
       break;
   }
 
-  if (!teamleader_deals_add_deal($parameters['deal_contact_or_company'], $contact_or_company_id, $parameters['deal_title'], array(), array(), $parameters['deal_sys_department_id'], $parameters['deal_responsible_sys_client_id'], $parameters['deal_source'], $parameters['deal_description'])) {
+  $additional_info = array(
+    'description' => $parameters['deal_description'],
+    'description_location' => $parameters['deal_description_location'],
+  );
+
+  if (!teamleader_deals_add_deal($parameters['deal_contact_or_company'], $contact_or_company_id, $parameters['deal_title'], $parameters['deal_sys_department_id'], $parameters['deal_responsible_sys_client_id'], $parameters['deal_source'], $additional_info, array(), array())) {
     drupal_set_message(t('Something went wrong! Deal can not be created on Teamleader.'), 'error');
   }
+}
+
+/**
+ * Implements hook_rules_event_info().
+ *
+ * TODO Extend available variables.
+ */
+function teamleader_deals_rules_rules_event_info() {
+  return array(
+    'teamleader_deals_rules_rules_event_new_deal_added' => array(
+      'label' => t('New deal added'),
+      'group' => t('Teamleader Deals Rules'),
+      'variables' => array(
+        'deal_id' => array(
+          'type' => 'integer',
+          'label' => t('Deal ID'),
+          'description' => t('The ID of the new deal on the Teamleader.'),
+        ),
+        'description' => array(
+          'type' => 'text',
+          'label' => t('Description'),
+          'description' => t('The description of the deal.'),
+        ),
+      ),
+    ),
+  );
 }
