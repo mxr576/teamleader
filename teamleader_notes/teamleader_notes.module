@@ -1,0 +1,102 @@
+<?php
+/**
+ * @file
+ * Module file for Teamleader Notes.
+ *
+ * Provides support for Teamleader's Notes API.
+ *
+ * @see http://apidocs.teamleader.be/notes.php
+ */
+
+define('TEAMLEADER_NOTES_ATTACH_TO_CONTACT', 'contact');
+define('TEAMLEADER_NOTES_ATTACH_TO_COMPANY', 'company');
+define('TEAMLEADER_NOTES_ATTACH_TO_SALE', 'sale');
+define('TEAMLEADER_NOTES_ATTACH_TO_PROJECT', 'project');
+define('TEAMLEADER_NOTES_ATTACH_TO_MEETING', 'meeting');
+
+/**
+ * Create a new note in the Teamleader.
+ *
+ * @param string $attach_to
+ *   The type of the object that this note will be attached to.
+ *   Possible parameters:
+ *     - TEAMLEADER_NOTES_ATTACH_TO_CONTACT,
+ *     - TEAMLEADER_NOTES_ATTACH_TO_COMPANY,
+ *     - TEAMLEADER_NOTES_ATTACH_TO_SALE,
+ *     - TEAMLEADER_NOTES_ATTACH_TO_PROJECT,
+ *     - TEAMLEADER_NOTES_ATTACH_TO_MEETING.
+ * @param int $object_id
+ *   The Teamleader ID of the object, that this note will be attached to.
+ * @param int $title
+ *   The title of the new note.
+ * @param array $additional_info
+ *   An associative array, which could contains the following key-value pairs:
+ *     - description: string. The main text of the note.
+ *     - description_type: string. The type of the description text:
+ *       plaintext or HTML.
+ *     - read_only: bool. Determine, whether this note could be modified
+ *       later or not. TRUE or FALSE.
+ *
+ * @return bool
+ *   If the API operation was successful, then it returns TRUE, else it
+ *   returns FALSE.
+ */
+function teamleader_notes_add_note($attach_to, $object_id, $title, array $additional_info = array()) {
+  $parameters = array(
+    'object_type' => $attach_to,
+    'object_id' => $object_id,
+    'note_title' => $title,
+  );
+
+  if (isset($additional_info['description'])) {
+    $parameters['note_extra_information'] = $additional_info['description'];
+  }
+  if (isset($additional_info['description_type'])) {
+    $parameters['note_extra_information_type'] = $additional_info['description_type'];
+  }
+  if (isset($additional_info['read_only'])) {
+    $parameters['disable_modification'] = $additional_info['read_only'];
+  }
+
+  $result = teamleader_query_execute('addNote', $parameters);
+
+  return $result['status'] == TEAMLEADER_API_STATUS_OK;
+}
+
+/**
+ * Get all notes from Teamleader, which belongs to this object on Teamleader.
+ *
+ * @param string $attached_to
+ *   The type of the object that the notes were attached to.
+ *   Possible parameters:
+ *     - TEAMLEADER_NOTES_ATTACH_TO_CONTACT,
+ *     - TEAMLEADER_NOTES_ATTACH_TO_COMPANY,
+ *     - TEAMLEADER_NOTES_ATTACH_TO_SALE,
+ *     - TEAMLEADER_NOTES_ATTACH_TO_PROJECT,
+ *     - TEAMLEADER_NOTES_ATTACH_TO_MEETING.
+ * @param int $object_id
+ *   The Teamleader ID of the object, that the notes were attached to.
+ * @param int $pageno
+ *   The current page id. Default is the first page.
+ *   (Each page contains max. 20 notes.)
+ *
+ * @return array|bool
+ *   If the API operation was successful, then it returns an array
+ *   of notes, else it returns FALSE.
+ */
+function teamleader_notes_get_notes($attached_to, $object_id, $pageno = 0) {
+  $result = teamleader_query_execute('getNotes', array(
+    'object_type' => $attached_to,
+    'object_id' => $object_id,
+    'pageno' => $pageno,
+  ));
+
+  if ($result['status'] == TEAMLEADER_API_STATUS_OK) {
+    return $result['response'];
+  }
+  else {
+    drupal_set_message($result['message'], 'error');
+  }
+
+  return FALSE;
+}
