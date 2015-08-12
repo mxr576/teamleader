@@ -27,7 +27,7 @@ function teamleader_general_get_all_departments() {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -51,7 +51,7 @@ function teamleader_general_get_all_tags($type = '') {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
@@ -75,7 +75,7 @@ function teamleader_general_get_segments($type = '') {
     return $result['response'];
   }
   else {
-    drupal_set_message($result['message']);
+    drupal_set_message($result['message'], 'error');
   }
 
   return FALSE;
