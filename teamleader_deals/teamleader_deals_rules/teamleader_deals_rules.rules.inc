@@ -242,7 +242,7 @@ function teamleader_deals_rules_rules_action_add_a_deal(array $parameters) {
       // The isn't any matching contact in the Teamleader, we have to create
       // this one first.
       if (!is_array($contact)) {
-        if (empty($parameters['contact_forename']) || !empty($parameters['contact_surname'])) {
+        if (empty($parameters['contact_forename']) || empty($parameters['contact_surname'])) {
           drupal_set_message(t("Contact does not exists on Teamleader. New contact can not be created, because the contact's forename and surname are empty, that's why the deal creation process is also aborted!"), 'error');
           return;
         }
@@ -283,6 +283,16 @@ function teamleader_deals_rules_rules_action_add_a_deal(array $parameters) {
       // from the results.
       else {
         $contact = array_shift($contact);
+        $changes = array();
+        array_walk($parameters, function ($value, $key) use (&$changes) {
+          if (preg_match('/^contact_/', $key)) {
+            $clean_key = preg_replace('/^contact_/', '', $key);
+            $changes[$clean_key] = $value;
+          }
+        });
+        if (!teamleader_crm_update_contact($contact['id'], $changes)) {
+          drupal_set_message(t('Existing contact can not be updated on Teamleader!'), 'warning');
+        }
       }
 
       $contact_or_company_id = is_array($contact) ? $contact['id'] : $contact;

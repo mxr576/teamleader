@@ -127,10 +127,9 @@ function teamleader_deals_add_deal($customer_type, $customer_id, $title, $depart
     $parameters += $additional_info;
     // Store the description text in a new, attached note, instead of the
     // deal's own description field.
-    // TODO It would be better to check, if any
-    // teamleader_notes_rules_rules_action_add_note action exists,
-    // which triggered by the teamleader_deals_rules_rules_event_new_deal_added
-    // event.
+    // TODO It would be better, if we check if there any
+    // teamleader_deals_rules_rules_event_new_deal_added event which triggers a
+    // teamleader_notes_rules_rules_action_add_note action.
     if (module_exists('teamleader_deals_rules') && module_exists('teamleader_notes_rules')) {
       if (!empty($additional_info['description']) && isset($additional_info['description_location']) && $additional_info['description_location'] == 'note') {
         unset($parameters['description']);
